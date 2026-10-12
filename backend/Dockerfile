@@ -8,15 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch FIRST (prevents 2GB GPU version from being pulled)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining Python dependencies
+# Install ALL dependencies together with CPU-only PyTorch index
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
+       --extra-index-url https://download.pytorch.org/whl/cpu \
+       -r requirements.txt \
+    && python -m spacy download en_core_web_sm
 
 # Copy application source
 COPY app/ ./app/
