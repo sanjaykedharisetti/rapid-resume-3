@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./matchly.db"
 
     # CORS – stored as comma-separated string, parsed to list
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "*"
 
     # Upload
     MAX_UPLOAD_SIZE_MB: int = 10

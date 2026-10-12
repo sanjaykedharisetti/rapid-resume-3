@@ -5,7 +5,8 @@
  */
 import axios from 'axios'
 
-const _rawUrl = import.meta.env.VITE_API_BASE_URL || ''
+const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const _rawUrl = envUrl || (import.meta.env.PROD ? 'https://rapid-resume-3-1.onrender.com' : '')
 // Render passes just the hostname (e.g. "rapid-resume-backend.onrender.com")
 // so we need to add https:// if it doesn't already have a protocol
 const BASE_URL = _rawUrl && !_rawUrl.startsWith('http')
