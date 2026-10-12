@@ -7,10 +7,10 @@ sqlalchemy==2.0.30
 aiosqlite==0.20.0
 greenlet==3.0.3
 
-# NLP (torch installed separately in Dockerfile for CPU-only version)
+# NLP
 sentence-transformers==2.7.0
 scikit-learn==1.4.2
-spacy==3.7.4
+spacy==3.8.4
 numpy==1.26.4
 
 # Resume parsing
