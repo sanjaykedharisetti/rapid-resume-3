@@ -124,7 +124,7 @@ export default function ResumeOptimization() {
       <div className="card-glass rounded-3xl p-8 bg-gradient-to-r from-cyan-950/30 via-slate-900/60 to-blue-950/30 border border-cyan-500/20 space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5" />
-          AI Resume Optimizer
+          Resume Optimizer
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-white">
           Elevate Your ATS Compatibility
@@ -211,12 +211,12 @@ export default function ResumeOptimization() {
             {isOptimizing ? (
               <>
                 <Loader2 className="w-5 h-5 spinner" />
-                Optimizing with AI…
+                Optimizing Resume…
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5 text-cyan-200" />
-                {optData ? 'Re-Optimize Resume' : 'Optimize Resume with AI'}
+                {optData ? 'Re-Optimize Resume' : 'Optimize Resume'}
               </>
             )}
           </button>

@@ -205,7 +205,7 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      {/* ── AI Optimizer Callout Banner ── */}
+      {/* ── Resume Optimizer Callout Banner ── */}
       <div className="card-glass rounded-2xl p-6 mb-6 border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 via-slate-900/60 to-emerald-950/20 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-center md:text-left">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold uppercase tracking-wider">
@@ -216,7 +216,7 @@ export default function ResultsPage() {
             Want to boost your ATS compatibility score toward 85%?
           </h3>
           <p className="text-xs text-slate-300">
-            Our AI Resume Optimizer restructures sections, normalizes verified skills, and sharpens action verbs.
+            Our Resume Optimizer restructures sections, normalizes verified skills, and sharpens action verbs.
           </p>
         </div>
         <Link

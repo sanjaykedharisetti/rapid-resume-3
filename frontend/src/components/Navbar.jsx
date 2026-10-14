@@ -28,7 +28,7 @@ export default function Navbar() {
               </div>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-bold text-white text-sm">Matchly AI</span>
+              <span className="font-bold text-white text-sm">Matchly</span>
               <span className="text-[10px] text-slate-400 font-medium tracking-wide">Resume Matcher</span>
             </div>
           </Link>

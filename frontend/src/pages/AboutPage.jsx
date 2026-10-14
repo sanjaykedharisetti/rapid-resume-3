@@ -53,7 +53,7 @@ export default function AboutPage() {
             Methodology & Technology
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
-            How Matchly AI Works
+            How Matchly Works
           </h1>
           <p className="max-w-2xl mx-auto text-slate-400 text-base sm:text-lg">
             A production-ready NLP matching engine designed to help candidates optimize their resumes and understand recruitment algorithms.
@@ -96,7 +96,7 @@ export default function AboutPage() {
             Scoring Formula & Weights
           </h2>
           <p className="text-sm text-slate-400">
-            Unlike basic keyword counters, Matchly AI prevents keyword-stuffing by blending deep contextual sentence embeddings with explicit skill extraction.
+            Unlike basic keyword counters, Matchly prevents keyword-stuffing by blending deep contextual sentence embeddings with explicit skill extraction.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -158,13 +158,13 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Ethical AI Disclaimer */}
+        {/* Methodology & Disclaimer */}
         <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-4">
           <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1 text-sm">
             <h4 className="font-bold text-amber-200">Algorithmic Transparency & Limitations</h4>
             <p className="text-amber-300/80 leading-relaxed">
-              Matchly AI provides automated heuristic guidance based on text comparison. Matching scores do not guarantee interview invites or hiring outcomes. Scores are intended to highlight missing keywords, gaps, and areas for improvement.
+              Matchly provides automated heuristic guidance based on text comparison. Matching scores do not guarantee interview invites or hiring outcomes. Scores are intended to highlight missing keywords, gaps, and areas for improvement.
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ const features = [
   {
     icon: Brain,
     color: 'from-blue-500 to-cyan-500',
-    title: 'AI-Powered Analysis',
+    title: 'Advanced Analysis',
     desc: 'Uses Sentence-BERT embeddings and TF-IDF to measure real semantic similarity between your resume and job requirements.',
   },
   {
@@ -73,7 +73,7 @@ export default function HomePage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm font-medium mb-8 animate-fade-in">
             <Zap size={13} className="text-blue-400" />
-            AI-Powered Resume Analysis · NLP + Machine Learning
+            Advanced Resume Analysis · NLP + Matching Engine
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6 animate-slide-up">
@@ -84,7 +84,7 @@ export default function HomePage() {
 
           <p className="max-w-2xl mx-auto text-lg text-slate-400 leading-relaxed mb-10 animate-slide-up animation-delay-100">
             Upload your resume, paste a job description, and discover your compatibility score with
-            AI-powered resume analysis — including skill gaps, qualification insights, and actionable improvement suggestions.
+            detailed resume analysis — including skill gaps, qualification insights, and actionable improvement suggestions.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up animation-delay-200">

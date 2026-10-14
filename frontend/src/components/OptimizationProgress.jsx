@@ -31,7 +31,7 @@ export default function OptimizationProgress({ isRunning }) {
     <div className="card-glass rounded-3xl p-8 border border-cyan-500/30 bg-gradient-to-br from-cyan-950/20 via-slate-900/40 to-blue-950/20 space-y-6 animate-scale-in">
       <div className="flex items-center gap-3">
         <Loader2 className="w-6 h-6 text-cyan-400 spinner" />
-        <h3 className="text-xl font-bold text-white">AI Optimization in Progress</h3>
+        <h3 className="text-xl font-bold text-white">Resume Optimization in Progress</h3>
       </div>
       <p className="text-sm text-slate-400">
         Executing algorithmic enhancement without hallucinating unearned skills or qualifications.

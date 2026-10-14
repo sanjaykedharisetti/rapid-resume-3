@@ -12,10 +12,10 @@ export default function Footer() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
                 <Brain size={16} className="text-white" />
               </div>
-              <span className="font-bold text-white">Matchly AI</span>
+              <span className="font-bold text-white">Matchly</span>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              AI-powered resume analysis to help you land your dream job. 
+              Intelligent resume analysis to help you land your dream job. 
               Built with NLP and modern web technologies.
             </p>
           </div>
@@ -57,11 +57,11 @@ export default function Footer() {
 
         <div className="mt-10 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-slate-500">
-            © {new Date().getFullYear()} Matchly AI. This tool provides an estimate of resume-to-job compatibility, not a hiring guarantee.
+            © {new Date().getFullYear()} Matchly. This tool provides an estimate of resume-to-job compatibility, not a hiring guarantee.
           </p>
           <div className="flex items-center gap-1 text-xs text-slate-500">
             <Zap size={12} className="text-blue-500" />
-            <span>Built with AI</span>
+            <span>Fast & Secure</span>
           </div>
         </div>
       </div>

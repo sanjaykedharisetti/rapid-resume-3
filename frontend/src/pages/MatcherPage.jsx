@@ -7,7 +7,7 @@ import {
 import DropZone from '../components/DropZone'
 import { analyzeResume } from '../services/api'
 
-const EXAMPLE_JD = `We are looking for a Senior Python Developer to join our AI team.
+const EXAMPLE_JD = `We are looking for a Senior Python Developer to join our engineering team.
 
 Requirements:
 - 3+ years of Python development experience
@@ -116,7 +116,7 @@ export default function MatcherPage() {
           Resume Matching Dashboard
         </h1>
         <p className="text-slate-400 max-w-xl mx-auto">
-          Upload your resume and paste the job description below to receive a detailed AI-powered compatibility analysis.
+          Upload your resume and paste the job description below to receive a detailed compatibility analysis.
         </p>
       </div>
 
@@ -240,7 +240,7 @@ Include:
               <span>
                 {uploadProgress > 0 && uploadProgress < 100
                   ? `Uploading… ${uploadProgress}%`
-                  : 'Analyzing with AI…'}
+                  : 'Analyzing Resume…'}
               </span>
             </>
           ) : (
