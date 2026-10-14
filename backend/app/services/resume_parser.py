@@ -182,7 +182,7 @@ def _extract_from_pdf(file_bytes: bytes, filename: str) -> str:
     except Exception as exc:
         logger.warning("PyMuPDF failed on '%s': %s", filename, exc)
 
-    # Fallback: pdfminer.high_level
+    # Fallback 1: pdfminer.high_level
     if not full_text:
         try:
             from pdfminer.high_level import extract_text as pdfminer_extract
@@ -191,6 +191,26 @@ def _extract_from_pdf(file_bytes: bytes, filename: str) -> str:
                 full_text = pdfminer_text.strip()
         except Exception as exc:
             logger.warning("pdfminer failed on '%s': %s", filename, exc)
+
+    # Fallback 2: RapidOCR for scanned image-only PDFs
+    if not full_text:
+        try:
+            import fitz
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            ocr_pages: list[str] = []
+            for i in range(len(doc)):
+                page = doc[i]
+                pix = page.get_pixmap(dpi=150)
+                page_png = pix.tobytes("png")
+                page_ocr = _run_ocr_on_bytes(page_png)
+                if page_ocr and len(page_ocr.strip()) >= 15:
+                    ocr_pages.append(page_ocr.strip())
+            doc.close()
+            if ocr_pages:
+                full_text = "\n\n".join(ocr_pages).strip()
+                logger.info("RapidOCR recovered %d characters from scanned PDF '%s'", len(full_text), filename)
+        except Exception as exc:
+            logger.warning("Scanned PDF OCR failed on '%s': %s", filename, exc)
 
     if not full_text:
         raise ResumeParseError(
@@ -366,8 +386,85 @@ def _extract_from_text_bytes(file_bytes: bytes, filename: str) -> str:
     raise ResumeParseError(f"File '{filename}' could not be decoded as text.")
 
 
+_ocr_engine = None
+
+
+def _get_ocr_engine():
+    """Lazily initialize and cache the RapidOCR inference engine."""
+    global _ocr_engine
+    if _ocr_engine is None:
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            _ocr_engine = RapidOCR()
+            logger.info("RapidOCR engine initialized successfully.")
+        except Exception as exc:
+            logger.warning("RapidOCR could not be initialized: %s", exc)
+            return None
+    return _ocr_engine
+
+
+def _format_ocr_results(ocr_results: list) -> str:
+    """
+    Format RapidOCR results into structured, clean text.
+    Handles multi-column resume layouts (e.g., sidebar + main column)
+    so content is extracted in proper logical order.
+    """
+    if not ocr_results:
+        return ""
+
+    valid_items = [
+        item for item in ocr_results
+        if item and len(item) > 1 and item[1] and str(item[1]).strip()
+    ]
+    if not valid_items:
+        return ""
+
+    boxes_with_info = []
+    x_positions = []
+    for item in valid_items:
+        box = item[0]
+        text = str(item[1]).strip()
+        x0 = float(box[0][0])
+        y0 = float(box[0][1])
+        x_positions.append(x0)
+        boxes_with_info.append((x0, y0, text))
+
+    min_x, max_x = min(x_positions), max(x_positions)
+    x_span = max_x - min_x
+
+    # Detect multi-column layout: check if there's a distinct sidebar column
+    if x_span > 120:
+        threshold_x = min_x + (x_span * 0.35)
+        left_items = [b for b in boxes_with_info if b[0] < threshold_x]
+        right_items = [b for b in boxes_with_info if b[0] >= threshold_x]
+
+        if len(left_items) >= 4 and len(right_items) >= 4:
+            left_items.sort(key=lambda b: b[1])
+            right_items.sort(key=lambda b: b[1])
+            right_text = "\n".join(b[2] for b in right_items).strip()
+            left_text = "\n".join(b[2] for b in left_items).strip()
+            return f"{right_text}\n\n{left_text}".strip()
+
+    # Default / single-column layout: sort primarily by vertical position
+    boxes_with_info.sort(key=lambda b: (round(b[1] / 12), b[0]))
+    return "\n".join(b[2] for b in boxes_with_info).strip()
+
+
+def _run_ocr_on_bytes(image_bytes: bytes) -> str:
+    """Run RapidOCR on raw image bytes and return cleanly formatted text."""
+    engine = _get_ocr_engine()
+    if engine is None:
+        return ""
+    try:
+        results, _ = engine(image_bytes)
+        return _format_ocr_results(results)
+    except Exception as exc:
+        logger.warning("RapidOCR execution failed on bytes: %s", exc)
+        return ""
+
+
 def _extract_from_image(file_bytes: bytes, filename: str) -> str:
-    """Handle image files (.png, .jpg, .webp, etc.)."""
+    """Handle image files (.png, .jpg, .jpeg, .webp, .bmp, .tiff) via RapidOCR and fallbacks."""
     # Verify image integrity via Pillow
     try:
         from PIL import Image
@@ -376,7 +473,13 @@ def _extract_from_image(file_bytes: bytes, filename: str) -> str:
     except Exception as exc:
         raise ResumeParseError(f"The image file '{filename}' is invalid or corrupted.") from exc
 
-    # Attempt PyMuPDF text or metadata extraction
+    # 1. Primary: Run RapidOCR
+    ocr_text = _run_ocr_on_bytes(file_bytes)
+    if len(ocr_text.strip()) >= 20:
+        logger.info("RapidOCR extracted %d characters from image '%s'", len(ocr_text), filename)
+        return ocr_text.strip()
+
+    # 2. Secondary: Attempt PyMuPDF text or metadata extraction
     try:
         import fitz
         doc = fitz.open(stream=file_bytes, filetype=Path(filename).suffix.lstrip(".").lower())
@@ -388,14 +491,14 @@ def _extract_from_image(file_bytes: bytes, filename: str) -> str:
     except Exception:
         pass
 
-    # Extract any embedded IPTC/EXIF/metadata strings
+    # 3. Tertiary: Extract any embedded IPTC/EXIF/metadata strings
     metadata_text = _extract_printable_strings(file_bytes)
     if len(metadata_text) > 80:
         return metadata_text
 
     raise ResumeParseError(
-        f"Image file '{filename}' was uploaded, but no machine-readable text layer was detected. "
-        f"For highest scoring accuracy, please upload a text document (PDF, Word DOCX/DOC, TXT, RTF, ODT, or HTML)."
+        f"Could not extract readable text from image '{filename}'. "
+        f"Please ensure the image contains clear, legible resume text."
     )
 
 

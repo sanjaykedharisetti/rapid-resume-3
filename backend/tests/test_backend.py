@@ -149,6 +149,24 @@ def test_text_and_doc_formats_supported():
     assert "Jane Smith" in rtf_extracted
 
 
+def test_image_resume_extraction_with_ocr():
+    """Verify that image resumes (.png, .jpg) are parsed using RapidOCR."""
+    from PIL import Image, ImageDraw
+    from app.services.resume_parser import extract_text_from_bytes
+
+    img = Image.new("RGB", (500, 120), color=(255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), "Jane Doe - Full Stack Developer", fill=(0, 0, 0))
+    d.text((10, 35), "Skills: Python, TypeScript, Docker, SQL", fill=(0, 0, 0))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    png_bytes = buf.getvalue()
+
+    extracted = extract_text_from_bytes(png_bytes, "resume.png")
+    assert "Jane Doe" in extracted or "Full Stack" in extracted
+    assert "Python" in extracted
+
+
 def test_unsupported_or_empty_binary_fails():
     from app.services.resume_parser import ResumeParseError, extract_text_from_bytes
     with pytest.raises(ResumeParseError):
