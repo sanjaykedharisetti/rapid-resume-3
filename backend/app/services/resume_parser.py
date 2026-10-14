@@ -72,6 +72,14 @@ def extract_text_from_bytes(file_bytes: bytes, filename: str) -> str:
     is_zip_magic = file_bytes.startswith(b"PK\x03\x04")
     is_doc_magic = file_bytes.startswith(b"\xd0\xcf\x11\xe0")
     is_rtf_magic = file_bytes.lstrip().startswith(b"{\\rtf")
+    is_image_magic = (
+        file_bytes.startswith(b"\xff\xd8\xff")
+        or file_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+        or (file_bytes.startswith(b"RIFF") and b"WEBP" in file_bytes[:16])
+        or file_bytes.startswith(b"BM")
+        or file_bytes.startswith(b"II*\x00")
+        or file_bytes.startswith(b"MM\x00*")
+    )
 
     errors: list[str] = []
 
@@ -130,7 +138,7 @@ def extract_text_from_bytes(file_bytes: bytes, filename: str) -> str:
             errors.append(f"HTML extractor: {exc}")
 
     # 7. Image Handler (.png, .jpg, .jpeg, .webp, .bmp, .tiff)
-    if ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif"}:
+    if ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif"} or is_image_magic:
         try:
             return _extract_from_image(file_bytes, filename)
         except ResumeParseError:
@@ -404,6 +412,33 @@ def _get_ocr_engine():
     return _ocr_engine
 
 
+def _cluster_boxes_into_lines(boxes: list[tuple[float, float, str]]) -> str:
+    """Group bounding boxes by vertical proximity into coherent, natural lines."""
+    if not boxes:
+        return ""
+    boxes.sort(key=lambda b: b[1])
+    lines: list[list[tuple[float, float, str]]] = []
+    current_line: list[tuple[float, float, str]] = []
+    current_y = -1.0
+
+    for b in boxes:
+        if current_y < 0 or abs(b[1] - current_y) <= 10.0:
+            current_line.append(b)
+            current_y = sum(x[1] for x in current_line) / len(current_line)
+        else:
+            current_line.sort(key=lambda x: x[0])
+            lines.append(current_line)
+            current_line = [b]
+            current_y = b[1]
+
+    if current_line:
+        current_line.sort(key=lambda x: x[0])
+        lines.append(current_line)
+
+    formatted_lines = [" ".join(x[2] for x in line) for line in lines]
+    return "\n".join(formatted_lines).strip()
+
+
 def _format_ocr_results(ocr_results: list) -> str:
     """
     Format RapidOCR results into structured, clean text.
@@ -413,8 +448,8 @@ def _format_ocr_results(ocr_results: list) -> str:
     if not ocr_results:
         return ""
 
-    boxes_with_info = []
-    x_positions = []
+    boxes_with_info: list[tuple[float, float, str]] = []
+    x_positions: list[float] = []
     for item in ocr_results:
         if not item or len(item) < 2 or not item[1] or not str(item[1]).strip():
             continue
@@ -441,15 +476,40 @@ def _format_ocr_results(ocr_results: list) -> str:
             right_items = [b for b in boxes_with_info if b[0] >= threshold_x]
 
             if len(left_items) >= 4 and len(right_items) >= 4:
-                left_items.sort(key=lambda b: b[1])
-                right_items.sort(key=lambda b: b[1])
-                right_text = "\n".join(b[2] for b in right_items).strip()
-                left_text = "\n".join(b[2] for b in left_items).strip()
+                right_text = _cluster_boxes_into_lines(right_items)
+                left_text = _cluster_boxes_into_lines(left_items)
                 return f"{right_text}\n\n{left_text}".strip()
 
-    # Default / single-column layout: sort primarily by vertical position
-    boxes_with_info.sort(key=lambda b: (round(b[1] / 12), b[0]))
-    return "\n".join(b[2] for b in boxes_with_info).strip()
+    # Default / single-column layout: cluster horizontally into lines
+    return _cluster_boxes_into_lines(boxes_with_info)
+
+
+def _prepare_image_for_ocr(file_bytes: bytes) -> bytes:
+    """Prepare image: normalize orientation, convert to RGB, and downscale if oversized."""
+    try:
+        from PIL import Image, ImageFile, ImageOps
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        img = Image.open(io.BytesIO(file_bytes))
+        try:
+            img = ImageOps.exif_transpose(img)
+        except Exception:
+            pass
+
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        max_dim = max(img.size)
+        if max_dim > 1800:
+            scale = 1800.0 / max_dim
+            new_size = (int(img.width * scale), int(img.height * scale))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        out = io.BytesIO()
+        img.save(out, format="JPEG", quality=95)
+        return out.getvalue()
+    except Exception as exc:
+        logger.warning("Image preparation failed, using raw bytes: %s", exc)
+        return file_bytes
 
 
 def _run_ocr_on_bytes(image_bytes: bytes) -> str:
@@ -467,21 +527,23 @@ def _run_ocr_on_bytes(image_bytes: bytes) -> str:
 
 def _extract_from_image(file_bytes: bytes, filename: str) -> str:
     """Handle image files (.png, .jpg, .jpeg, .webp, .bmp, .tiff) via RapidOCR and fallbacks."""
-    # Verify image integrity via Pillow
-    try:
-        from PIL import Image
-        img = Image.open(io.BytesIO(file_bytes))
-        img.verify()
-    except Exception as exc:
-        raise ResumeParseError(f"The image file '{filename}' is invalid or corrupted.") from exc
+    # 1. Prepare and normalize image bytes
+    processed_bytes = _prepare_image_for_ocr(file_bytes)
 
-    # 1. Primary: Run RapidOCR
-    ocr_text = _run_ocr_on_bytes(file_bytes)
+    # 2. Primary: Run RapidOCR on processed bytes
+    ocr_text = _run_ocr_on_bytes(processed_bytes)
     if len(ocr_text.strip()) >= 20:
         logger.info("RapidOCR extracted %d characters from image '%s'", len(ocr_text), filename)
         return ocr_text.strip()
 
-    # 2. Secondary: Attempt PyMuPDF text or metadata extraction
+    # Retry on original bytes if processed bytes failed
+    if processed_bytes != file_bytes:
+        ocr_text = _run_ocr_on_bytes(file_bytes)
+        if len(ocr_text.strip()) >= 20:
+            logger.info("RapidOCR extracted %d characters from raw image '%s'", len(ocr_text), filename)
+            return ocr_text.strip()
+
+    # 3. Secondary: Attempt PyMuPDF text or metadata extraction
     try:
         import fitz
         doc = fitz.open(stream=file_bytes, filetype=Path(filename).suffix.lstrip(".").lower())
@@ -493,7 +555,7 @@ def _extract_from_image(file_bytes: bytes, filename: str) -> str:
     except Exception:
         pass
 
-    # 3. Tertiary: Extract any embedded IPTC/EXIF/metadata strings
+    # 4. Tertiary: Extract any embedded IPTC/EXIF/metadata strings
     metadata_text = _extract_printable_strings(file_bytes)
     if len(metadata_text) > 80:
         return metadata_text
