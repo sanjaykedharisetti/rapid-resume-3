@@ -9,17 +9,26 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Pre-import scikit-learn modules at top-level to eliminate the ~2.5s cold-import overhead
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
+    _SKLEARN_AVAILABLE = True
+except Exception:
+    _SKLEARN_AVAILABLE = False
 
 _model_lock = threading.Lock()
 _model = None          # type: ignore
 _model_name: str = ""
 _model_error: str = ""
 _model_ready: bool = False
+_embedding_cache: Dict[str, np.ndarray] = {}
 
 
 def init_model(model_name: str = "all-MiniLM-L6-v2") -> bool:
@@ -39,7 +48,11 @@ def init_model(model_name: str = "all-MiniLM-L6-v2") -> bool:
 
         try:
             from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer(model_name)
+            # Try fast local-only load first to avoid network checks
+            try:
+                _model = SentenceTransformer(model_name, local_files_only=True)
+            except Exception:
+                _model = SentenceTransformer(model_name)
             _model_ready = True
             logger.info("Model '%s' loaded successfully.", model_name)
             return True
@@ -68,8 +81,24 @@ def compute_semantic_similarity(text_a: str, text_b: str) -> Optional[float]:
         return None
 
     try:
-        embeddings = _model.encode([text_a, text_b], convert_to_numpy=True, show_progress_bar=False)
-        vec_a, vec_b = embeddings[0], embeddings[1]
+        vec_a = _embedding_cache.get(text_a)
+        vec_b = _embedding_cache.get(text_b)
+
+        if vec_a is None and vec_b is None:
+            embeddings = _model.encode([text_a, text_b], convert_to_numpy=True, show_progress_bar=False)
+            vec_a = np.ravel(np.asarray(embeddings[0]))
+            vec_b = np.ravel(np.asarray(embeddings[1]))
+            _embedding_cache[text_a] = vec_a
+            _embedding_cache[text_b] = vec_b
+        else:
+            if vec_a is None:
+                encoded_a = _model.encode(text_a, convert_to_numpy=True, show_progress_bar=False)
+                vec_a = np.ravel(np.asarray(encoded_a))
+                _embedding_cache[text_a] = vec_a
+            if vec_b is None:
+                encoded_b = _model.encode(text_b, convert_to_numpy=True, show_progress_bar=False)
+                vec_b = np.ravel(np.asarray(encoded_b))
+                _embedding_cache[text_b] = vec_b
 
         # Cosine similarity
         dot = float(np.dot(vec_a, vec_b))
@@ -88,15 +117,16 @@ def compute_semantic_similarity(text_a: str, text_b: str) -> Optional[float]:
         return None
 
 
+
 def compute_tfidf_similarity(text_a: str, text_b: str) -> float:
     """
     Fallback: TF-IDF cosine similarity using scikit-learn.
     Always returns a float in [0, 1].
     """
-    try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
+    if not _SKLEARN_AVAILABLE:
+        return 0.0
 
+    try:
         vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
         tfidf_matrix = vectorizer.fit_transform([text_a, text_b])
         score = float(sk_cosine(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0])
@@ -104,3 +134,4 @@ def compute_tfidf_similarity(text_a: str, text_b: str) -> float:
     except Exception as exc:
         logger.error("TF-IDF similarity failed: %s", exc)
         return 0.0
+

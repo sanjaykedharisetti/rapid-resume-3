@@ -20,7 +20,7 @@ export default function OptimizationProgress({ isRunning }) {
 
     const interval = setInterval(() => {
       setCurrentStage((prev) => (prev < STAGES.length - 1 ? prev + 1 : prev))
-    }, 1800)
+    }, 350)
 
     return () => clearInterval(interval)
   }, [isRunning])
