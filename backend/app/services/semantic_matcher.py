@@ -76,6 +76,10 @@ def compute_semantic_similarity(text_a: str, text_b: str) -> Optional[float]:
 
     Returns a float in [0, 1], or None if the model is not available.
     """
+    import os
+    if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("LOW_MEMORY"):
+        return None
+
     if not _model_ready or _model is None:
         logger.warning("Semantic model not ready; skipping semantic similarity.")
         return None

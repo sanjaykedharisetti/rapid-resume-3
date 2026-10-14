@@ -70,16 +70,23 @@ async def startup_event():
     except Exception as exc:
         logger.error("Database initialisation failed: %s", exc)
 
-    # Load NLP model (non-blocking failure)
-    model_name = settings.SENTENCE_MODEL
-    ok = semantic_matcher.init_model(model_name)
-    if ok:
-        logger.info("NLP model '%s' is ready.", model_name)
+    # Load NLP model (non-blocking failure; skip on 512MB Render free tier to prevent OOM)
+    is_render = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("LOW_MEMORY"))
+    if not is_render:
+        model_name = settings.SENTENCE_MODEL
+        ok = semantic_matcher.init_model(model_name)
+        if ok:
+            logger.info("NLP model '%s' is ready.", model_name)
+        else:
+            logger.warning(
+                "NLP model '%s' could not be loaded. "
+                "TF-IDF fallback will be used for semantic similarity.",
+                model_name,
+            )
     else:
-        logger.warning(
-            "NLP model '%s' could not be loaded. "
-            "TF-IDF fallback will be used for semantic similarity.",
-            model_name,
+        logger.info(
+            "Render cloud environment detected: using high-performance TF-IDF semantic matching "
+            "to operate safely within 512MB RAM limit."
         )
 
 
