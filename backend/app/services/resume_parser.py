@@ -402,7 +402,7 @@ def _get_ocr_engine():
     global _ocr_engine
     if _ocr_engine is None:
         try:
-            from rapidocr_onnxruntime import RapidOCR
+            from rapidocr_onnxruntime import RapidOCR  # pyrefly: ignore [missing-import] # type: ignore
             # Disabling angle classifier saves ~50% inference time and memory
             _ocr_engine = RapidOCR(use_angle_cls=False)
             logger.info("RapidOCR engine initialized successfully (use_angle_cls=False).")
