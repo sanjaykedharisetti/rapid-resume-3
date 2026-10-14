@@ -3,6 +3,7 @@ FastAPI route handlers for the Resume-Job Matcher & AI Resume Optimizer API.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -148,7 +149,7 @@ async def analyze_resume(
     # ---- Text extraction --------------------------------------------------
 
     try:
-        raw_text = extract_text_from_bytes(file_bytes, filename)
+        raw_text = await asyncio.to_thread(extract_text_from_bytes, file_bytes, filename)
     except ResumeParseError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -175,7 +176,7 @@ async def analyze_resume(
     # ---- Scoring ----------------------------------------------------------
 
     try:
-        result = compute_score(resume_text, jd_text)
+        result = await asyncio.to_thread(compute_score, resume_text, jd_text)
     except Exception as exc:
         logger.exception("Error computing score for '%s'", filename)
         raise HTTPException(
@@ -286,7 +287,8 @@ async def run_resume_optimization(
 
     # 2. Run optimization engine
     try:
-        opt_data = optimize_resume(
+        opt_data = await asyncio.to_thread(
+            optimize_resume,
             original_text=resume_text,
             job_description=job_description,
             target_score=payload.target_score,

@@ -390,13 +390,14 @@ _ocr_engine = None
 
 
 def _get_ocr_engine():
-    """Lazily initialize and cache the RapidOCR inference engine."""
+    """Lazily initialize and cache the RapidOCR inference engine with optimized settings."""
     global _ocr_engine
     if _ocr_engine is None:
         try:
             from rapidocr_onnxruntime import RapidOCR
-            _ocr_engine = RapidOCR()
-            logger.info("RapidOCR engine initialized successfully.")
+            # Disabling angle classifier saves ~50% inference time and memory
+            _ocr_engine = RapidOCR(use_angle_cls=False)
+            logger.info("RapidOCR engine initialized successfully (use_angle_cls=False).")
         except Exception as exc:
             logger.warning("RapidOCR could not be initialized: %s", exc)
             return None
@@ -412,38 +413,39 @@ def _format_ocr_results(ocr_results: list) -> str:
     if not ocr_results:
         return ""
 
-    valid_items = [
-        item for item in ocr_results
-        if item and len(item) > 1 and item[1] and str(item[1]).strip()
-    ]
-    if not valid_items:
-        return ""
-
     boxes_with_info = []
     x_positions = []
-    for item in valid_items:
-        box = item[0]
+    for item in ocr_results:
+        if not item or len(item) < 2 or not item[1] or not str(item[1]).strip():
+            continue
         text = str(item[1]).strip()
-        x0 = float(box[0][0])
-        y0 = float(box[0][1])
-        x_positions.append(x0)
-        boxes_with_info.append((x0, y0, text))
+        box = item[0]
+        try:
+            x0 = float(box[0][0])
+            y0 = float(box[0][1])
+            x_positions.append(x0)
+            boxes_with_info.append((x0, y0, text))
+        except (IndexError, TypeError, ValueError):
+            boxes_with_info.append((0.0, float(len(boxes_with_info) * 10), text))
 
-    min_x, max_x = min(x_positions), max(x_positions)
-    x_span = max_x - min_x
+    if not boxes_with_info:
+        return ""
 
     # Detect multi-column layout: check if there's a distinct sidebar column
-    if x_span > 120:
-        threshold_x = min_x + (x_span * 0.35)
-        left_items = [b for b in boxes_with_info if b[0] < threshold_x]
-        right_items = [b for b in boxes_with_info if b[0] >= threshold_x]
+    if x_positions:
+        min_x, max_x = min(x_positions), max(x_positions)
+        x_span = max_x - min_x
+        if x_span > 120:
+            threshold_x = min_x + (x_span * 0.35)
+            left_items = [b for b in boxes_with_info if b[0] < threshold_x]
+            right_items = [b for b in boxes_with_info if b[0] >= threshold_x]
 
-        if len(left_items) >= 4 and len(right_items) >= 4:
-            left_items.sort(key=lambda b: b[1])
-            right_items.sort(key=lambda b: b[1])
-            right_text = "\n".join(b[2] for b in right_items).strip()
-            left_text = "\n".join(b[2] for b in left_items).strip()
-            return f"{right_text}\n\n{left_text}".strip()
+            if len(left_items) >= 4 and len(right_items) >= 4:
+                left_items.sort(key=lambda b: b[1])
+                right_items.sort(key=lambda b: b[1])
+                right_text = "\n".join(b[2] for b in right_items).strip()
+                left_text = "\n".join(b[2] for b in left_items).strip()
+                return f"{right_text}\n\n{left_text}".strip()
 
     # Default / single-column layout: sort primarily by vertical position
     boxes_with_info.sort(key=lambda b: (round(b[1] / 12), b[0]))
