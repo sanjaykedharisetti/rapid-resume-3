@@ -125,16 +125,38 @@ def test_docx_extraction():
 # 4. Unsupported file formats
 # ===========================================================================
 
-def test_unsupported_format():
-    from app.services.resume_parser import ResumeParseError, extract_text_from_bytes
-    with pytest.raises(ResumeParseError, match="Unsupported file type"):
-        extract_text_from_bytes(b"some text content", "resume.txt")
+def test_text_and_doc_formats_supported():
+    from app.services.resume_parser import extract_text_from_bytes
+    # 1. Plain text format
+    txt_content = b"John Doe - Senior Software Engineer\nSkills: Python, SQL, Docker, AWS"
+    txt_extracted = extract_text_from_bytes(txt_content, "resume.txt")
+    assert "Python" in txt_extracted
+    assert "John Doe" in txt_extracted
+
+    # 2. Markdown format
+    md_content = b"# John Doe\n## Experience\nFull Stack Developer with Python and React"
+    md_extracted = extract_text_from_bytes(md_content, "resume.md")
+    assert "Full Stack" in md_extracted
+
+    # 3. HTML format
+    html_content = b"<html><body><h1>Jane Smith</h1><p>Data Scientist with Python and SQL</p></body></html>"
+    html_extracted = extract_text_from_bytes(html_content, "resume.html")
+    assert "Jane Smith" in html_extracted
+
+    # 4. RTF format
+    rtf_content = b"{\\rtf1\\ansi Jane Smith\\par Senior Engineer with Python skills}"
+    rtf_extracted = extract_text_from_bytes(rtf_content, "resume.rtf")
+    assert "Jane Smith" in rtf_extracted
 
 
-def test_unsupported_format_xls():
+def test_unsupported_or_empty_binary_fails():
     from app.services.resume_parser import ResumeParseError, extract_text_from_bytes
     with pytest.raises(ResumeParseError):
-        extract_text_from_bytes(b"data", "spreadsheet.xlsx")
+        extract_text_from_bytes(b"\x00\x00\x00\x00\x00\x00\x00", "corrupted.bin")
+
+    with pytest.raises(ResumeParseError):
+        extract_text_from_bytes(b"", "empty.txt")
+
 
 
 # ===========================================================================

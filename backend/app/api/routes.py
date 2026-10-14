@@ -36,7 +36,11 @@ from app.services.pdf_generator import (
 )
 from app.services.report_service import generate_pdf_report
 from app.services.resume_optimizer import optimize_resume
-from app.services.resume_parser import ResumeParseError, extract_text_from_bytes
+from app.services.resume_parser import (
+    ResumeParseError,
+    SUPPORTED_EXTENSIONS,
+    extract_text_from_bytes,
+)
 from app.services.scoring_service import compute_score
 from app.services.text_processor import clean_text
 
@@ -45,11 +49,6 @@ settings = get_settings()
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
-ALLOWED_CONTENT_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -132,21 +131,6 @@ async def analyze_resume(
         )
 
     filename = resume.filename or "resume"
-    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type '{ext}'. Please upload a PDF or DOCX file.",
-        )
-
-    content_type = resume.content_type or ""
-    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
-        logger.warning(
-            "Unexpected content-type '%s' for file '%s'; proceeding with extension check.",
-            content_type, filename,
-        )
-
     file_bytes = await resume.read()
 
     if len(file_bytes) == 0:

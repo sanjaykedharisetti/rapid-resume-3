@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { File, FileText, Trash2, Upload, X } from 'lucide-react'
 import { formatBytes } from '../utils/helpers'
 
-const ACCEPTED = '.pdf,.docx'
+const ACCEPTED = '.pdf,.docx,.doc,.txt,.text,.rtf,.odt,.html,.htm,.md,.markdown,.pages,.png,.jpg,.jpeg,.webp,*'
 const MAX_SIZE_MB = 10
 
 export default function DropZone({ file, onFileChange, onFileRemove, error }) {
@@ -11,10 +11,6 @@ export default function DropZone({ file, onFileChange, onFileRemove, error }) {
 
   const validate = (f) => {
     if (!f) return 'No file selected.'
-    const ext = f.name.split('.').pop()?.toLowerCase()
-    if (!['pdf', 'docx'].includes(ext)) {
-      return `Invalid file type ".${ext}". Please upload a PDF or DOCX file.`
-    }
     if (f.size > MAX_SIZE_MB * 1024 * 1024) {
       return `File is too large (${formatBytes(f.size)}). Maximum size is ${MAX_SIZE_MB} MB.`
     }
@@ -42,16 +38,20 @@ export default function DropZone({ file, onFileChange, onFileRemove, error }) {
     }
   }
 
+  const getFileIcon = (fileName) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase() || ''
+    if (ext === 'pdf') return <FileText size={22} className="text-red-400" />
+    if (['docx', 'doc'].includes(ext)) return <File size={22} className="text-blue-400" />
+    if (['txt', 'rtf', 'odt', 'md', 'html', 'htm'].includes(ext)) return <FileText size={22} className="text-emerald-400" />
+    return <File size={22} className="text-cyan-400" />
+  }
+
   if (file) {
     return (
       <div className="card-glass rounded-2xl p-6 border border-emerald-500/20 bg-emerald-500/5 animate-scale-in">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-            {file.name.endsWith('.pdf') ? (
-              <FileText size={22} className="text-emerald-400" />
-            ) : (
-              <File size={22} className="text-blue-400" />
-            )}
+            {getFileIcon(file.name)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white font-semibold truncate">{file.name}</p>
@@ -100,11 +100,13 @@ export default function DropZone({ file, onFileChange, onFileRemove, error }) {
         <p className="text-white font-semibold mb-1">
           {dragging ? 'Drop your resume here' : 'Drag & drop your resume'}
         </p>
-        <p className="text-slate-400 text-sm mb-4">or click to browse</p>
-        <div className="flex items-center justify-center gap-3 text-xs text-slate-500">
-          <span className="px-2 py-1 rounded bg-white/5 border border-white/10">PDF</span>
-          <span className="px-2 py-1 rounded bg-white/5 border border-white/10">DOCX</span>
-          <span>up to {MAX_SIZE_MB} MB</span>
+        <p className="text-slate-400 text-sm mb-3">or click to browse any resume file</p>
+        <div className="flex items-center justify-center flex-wrap gap-2 text-xs text-slate-400">
+          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">PDF</span>
+          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">Word (DOCX/DOC)</span>
+          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">TXT / RTF</span>
+          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">ODT / HTML / MD</span>
+          <span className="text-slate-500 font-mono">Max {MAX_SIZE_MB} MB</span>
         </div>
       </div>
       <input

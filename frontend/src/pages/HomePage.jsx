@@ -26,8 +26,8 @@ const features = [
   {
     icon: FileSearch,
     color: 'from-orange-500 to-amber-500',
-    title: 'Multi-Format Support',
-    desc: 'Upload PDF or DOCX resumes. Text is extracted, cleaned, and analyzed through an NLP pipeline.',
+    title: 'Universal Format Support',
+    desc: 'Upload any resume format: PDF, Word (DOCX/DOC), TXT, RTF, ODT, HTML, Markdown, and more. Clean text is instantly extracted.',
   },
   {
     icon: Shield,
@@ -44,7 +44,8 @@ const features = [
 ]
 
 const steps = [
-  { n: '01', title: 'Upload Your Resume', desc: 'Drag & drop or click to upload your PDF or DOCX resume file.' },
+  { n: '01', title: 'Upload Your Resume', desc: 'Drag & drop or click to upload your resume file in any format.' },
+
   { n: '02', title: 'Paste Job Description', desc: 'Copy the complete job description from any job board or company website.' },
   { n: '03', title: 'Click Analyze', desc: 'Our NLP pipeline processes both documents and computes a compatibility score.' },
   { n: '04', title: 'Review & Improve', desc: 'Study matched skills, gaps, and suggestions. Download your PDF report.' },
